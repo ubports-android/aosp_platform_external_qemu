@@ -1632,6 +1632,8 @@ void HELPER(set_cp15)(CPUState *env, uint32_t insn, uint32_t val)
         }
         break;
     case 9:
+        if (arm_feature(env, ARM_FEATURE_V7) && crm == 12)
+            break; /* Perf counters. */
         if (arm_feature(env, ARM_FEATURE_OMAPCP))
             break;
         if (arm_feature(env, ARM_FEATURE_STRONGARM))
