@@ -191,6 +191,16 @@ common_LOCAL_SRC_FILES += $(LIBPNG_SOURCES) loadpng.c
 #
 BUILD_SDL_FROM_SOURCES := true
 
+# On darwin-x86, a bug in the Android build system prevents the compilation
+# of Objective-C sources. Fixed recently in AOSP, but we still use the
+# prebuilts for the benefit of older platform branches.
+#
+ifeq ($(QEMU_HOST_TAG),darwin-x86)
+    ifeq ($(FORCE_PREBUILT_SDL),true)
+        BUILD_SDL_FROM_SOURCES := false
+    endif
+endif
+
 # If we're building with android-configure.sh && make, always build from
 # sources to catch regressions as soon as they happen.
 #
@@ -231,6 +241,12 @@ else # BUILD_SDL_FROM_SOURCES
         -I$(LOCAL_PATH)/$(SDL_DIR)/include
 
     SDL_STATIC_LIBRARIES :=
+
+    # Set the 10.6 / 10.5 sysroot for Mac OS X, which enables QuickDraw
+    # compatibility headers
+    ifeq ($(QEMU_HOST_TAG),darwin-x86)
+      SDL_CFLAGS += -isysroot $(HOST_SYSROOT)
+    endif
 
 endif # BUILD_SDL_FROM_SOURCES
 
