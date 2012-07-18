@@ -148,6 +148,8 @@ typedef enum {
 
 #define  A_CALL_NUMBER_MAX_SIZE  16
 
+#define CALL_FAIL_NORMAL 16
+
 typedef struct {
     int         id;
     ACallDir    dir;
