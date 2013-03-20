@@ -67,6 +67,7 @@ HW_SOURCES := \
     dma.c \
     irq.c \
     goldfish_audio.c \
+    goldfish_bt.c \
     goldfish_device.c \
     goldfish_events_device.c \
     goldfish_fb.c \
