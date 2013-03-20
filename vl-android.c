@@ -215,7 +215,7 @@ int qemu_main(int argc, char **argv, char **envp);
 
 #ifdef CONFIG_STANDALONE_CORE
 /* Verbose value used by the standalone emulator core (without UI) */
-unsigned long   android_verbose;
+unsigned long long  android_verbose;
 #endif  // CONFIG_STANDALONE_CORE
 
 #if !defined(CONFIG_STANDALONE_CORE)
