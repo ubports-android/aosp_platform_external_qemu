@@ -36,7 +36,7 @@ JOBS=$(( $BUILD_NUM_CPUS * 2 ))
 ARCH=arm
 
 OPTION_HELP=no
-OPTION_ARMV7=no
+OPTION_ARMV7=yes
 OPTION_OUT=
 OPTION_CROSS=
 OPTION_ARCH=
@@ -49,6 +49,9 @@ for opt do
     optarg=$(expr "x$opt" : 'x[^=]*=\(.*\)')
     case $opt in
     --help|-h|-\?) OPTION_HELP=yes
+        ;;
+    --armv5)
+        OPTION_ARMV7=no
         ;;
     --armv7)
         OPTION_ARMV7=yes
@@ -87,7 +90,8 @@ if [ $OPTION_HELP = "yes" ] ; then
     echo ""
     echo "  --help                   print this message"
     echo "  --arch=<arch>            change target architecture [$ARCH]"
-    echo "  --armv7                  build ARMv7 binaries (see note below)"
+    echo "  --armv5                  build ARMv5 binaries"
+    echo "  --armv7                  build ARMv7 binaries (default. see note below)"
     echo "  --out=<directory>        output directory [$OUTPUT]"
     echo "  --cross=<prefix>         cross-toolchain prefix [$CROSSPREFIX]"
     echo "  --config=<name>          kernel config name [$CONFIG]"
