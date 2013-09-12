@@ -82,6 +82,7 @@ HW_SOURCES := \
     llcp.c \
     msmouse.c \
     nfc.c \
+    nfc-hci.c \
     nfc-nci.c \
     nfc-rf.c \
     pci.c \
