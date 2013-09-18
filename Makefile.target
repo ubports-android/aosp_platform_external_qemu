@@ -85,6 +85,7 @@ HW_SOURCES := \
     nfc.c \
     nfc-hci.c \
     nfc-nci.c \
+    nfc-re.c \
     nfc-rf.c \
     pci.c \
     qdev.c \
