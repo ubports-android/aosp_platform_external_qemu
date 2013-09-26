@@ -79,6 +79,7 @@ HW_SOURCES := \
     goldfish_rfkill.c \
     goldfish_tty.c \
     goldfish_vmem.c \
+    llcp.c \
     msmouse.c \
     pci.c \
     qdev.c \
