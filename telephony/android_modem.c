@@ -1310,7 +1310,7 @@ amodem_activate_data_call( AModem  modem, int cid, int enable)
 
     data->active = enable;
 
-    return NULL;
+    return "OK";
 }
 
 /** COMMAND HANDLERS
@@ -1567,7 +1567,7 @@ handleRoamPref( const char * cmd, AModem modem )
             modem->roaming_pref = roaming_pref;
             aconfig_set( modem->nvram_config, NV_CDMA_ROAMING_PREF, cmd );
             aconfig_save_file( modem->nvram_config, modem->nvram_config_filename );
-            return NULL;
+            return "OK";
         }
     }
     return amodem_printf( modem, "ERROR");
@@ -1707,7 +1707,7 @@ handleRadioPower( const char*  cmd, AModem  modem )
                        radio_state_change_event, modem );
     }
 
-    return NULL;
+    return "OK";
 }
 
 static const char*
@@ -1821,21 +1821,21 @@ handleNetworkRegistration( const char*  cmd, AModem  modem )
             assert( 0 && "unreachable" );
         }
     }
-    return NULL;
+    return "OK";
 }
 
 static const char*
 handleSetDialTone( const char*  cmd, AModem  modem )
 {
     /* XXX: TODO */
-    return NULL;
+    return "OK";
 }
 
 static const char*
 handleDeleteSMSonSIM( const char*  cmd, AModem  modem )
 {
     /* XXX: TODO */
-    return NULL;
+    return "OK";
 }
 
 static const char*
@@ -1888,7 +1888,7 @@ handleOperatorSelection( const char*  cmd, AModem  modem )
             case '0':
                 modem->oper_selection_mode = A_SELECTION_AUTOMATIC;
                 amodem_set_voice_registration(modem, A_REGISTRATION_HOME);
-                return NULL;
+                return "OK";
 
             case '1':
                 {
@@ -1940,12 +1940,12 @@ handleOperatorSelection( const char*  cmd, AModem  modem )
                         modem->data_state = A_REGISTRATION_ROAMING;
                         amodem_set_voice_registration(modem, A_REGISTRATION_ROAMING);
                     }
-                    return NULL;
+                    return "OK";
                 }
 
             case '2':
                 modem->oper_selection_mode = A_SELECTION_DEREGISTRATION;
-                return NULL;
+                return "OK";
 
             case '3':
                 {
@@ -1959,7 +1959,7 @@ handleOperatorSelection( const char*  cmd, AModem  modem )
                         goto BadCommand;
 
                     modem->oper_name_index = format;
-                    return NULL;
+                    return "OK";
                 }
             default:
                 ;
@@ -2084,6 +2084,8 @@ handleSendSMSText( const char*  cmd, AModem  modem )
         return "+CMS ERROR: BAD SMS RECEIVER ADDRESS";
     }
 
+    amodem_reply( modem, "+CMGS: 0" );
+
     do {
         int  index;
 
@@ -2169,7 +2171,7 @@ handleSendSMSText( const char*  cmd, AModem  modem )
     if (pdu != NULL)
         smspdu_free(pdu);
 
-    return "+CMGS: 0\rOK\r";
+    return NULL;
 }
 
 static const char*
@@ -2420,7 +2422,7 @@ handleDefinePDPContext( const char*  cmd, AModem  modem )
         data->type   = type;
         memcpy( data->apn, apn, sizeof(data->apn) );
     }
-    return NULL;
+    return "OK";
 BadCommand:
     return "ERROR: BAD COMMAND";
 }
@@ -2640,7 +2642,7 @@ handleAnswer( const char*  cmd, AModem  modem )
             }
         }
     }
-    return NULL;
+    return "OK";
 }
 
 int android_snapshot_update_time = 1;
@@ -2829,7 +2831,7 @@ handleHangup( const char*  cmd, AModem  modem )
     else
         return "ERROR: BAD COMMAND";
 
-    return NULL;
+    return "OK";
 }
 
 /*
@@ -2905,7 +2907,7 @@ handleSmscAddress( const char*  cmd, AModem  modem )
             goto EndCommand;
         }
 
-        return NULL;
+        return "OK";
     }
 EndCommand:
     return "+CMS ERROR: 304";
@@ -3060,7 +3062,10 @@ int  amodem_send( AModem  modem, const char*  cmd )
         modem->wait_sms = 0;
         R( "SMS<< %s\n", quote(cmd) );
         answer = handleSendSMSText( cmd, modem );
-        REPLY(answer);
+        if (answer) {
+            amodem_reply(modem, answer);
+        }
+        return modem->wait_sms;
     }
 
     /* everything that doesn't start with 'AT' is not a command, right ? */
@@ -3116,8 +3121,10 @@ int  amodem_send( AModem  modem, const char*  cmd )
             }
 
             answer = handler( cmd, modem );
-            if (answer == NULL)
-                REPLY( "OK" );
+            if (answer == NULL) {
+                // handler has sent reply out.
+                return modem->wait_sms;
+            }
 
             REPLY( answer );
         }
