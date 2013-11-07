@@ -191,13 +191,6 @@ common_LOCAL_SRC_FILES += $(LIBPNG_SOURCES) loadpng.c
 #
 BUILD_SDL_FROM_SOURCES := true
 
-# On linux-x86, using the prebuilts avoid installing all the X11
-# development packages on our build servers.
-#
-ifeq ($(QEMU_HOST_TAG),linux-x86)
-    BUILD_SDL_FROM_SOURCES := false
-endif
-
 # If we're building with android-configure.sh && make, always build from
 # sources to catch regressions as soon as they happen.
 #
