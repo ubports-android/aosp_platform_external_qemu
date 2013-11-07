@@ -195,7 +195,7 @@ BUILD_SDL_FROM_SOURCES := true
 # development packages on our build servers.
 #
 ifeq ($(QEMU_HOST_TAG),linux-x86)
-    BUILD_SDL_FROM_SOURCES := false
+    BUILD_SDL_FROM_SOURCES := true
 endif
 
 # If we're building with android-configure.sh && make, always build from
