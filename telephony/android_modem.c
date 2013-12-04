@@ -30,7 +30,9 @@
 #include <stdio.h>
 #include <netinet/in.h>
 #include "sms.h"
+#include "net.h"
 #include "remote_call.h"
+#include "slirp.h"
 
 #define  DEBUG  1
 
@@ -292,6 +294,8 @@ typedef enum {
 
 #define  A_DATA_APN_SIZE  32
 
+struct _ADataConnectionRec;
+
 typedef struct {
     int        id;
     int        active;
@@ -299,7 +303,14 @@ typedef struct {
     char       apn[ A_DATA_APN_SIZE ];
     char       ip[ INET_ADDRSTRLEN ];
 
+    struct _ADataConnectionRec* conn;
 } ADataContextRec, *ADataContext;
+
+typedef struct _ADataConnectionRec {
+    struct NICInfo*  nd;
+    char             ip[ INET_ADDRSTRLEN ];
+    ADataContext     context;
+} ADataConnectionRec, *ADataConnection;
 
 /* the spec says that there can only be a max of 4 contexts */
 #define  MAX_DATA_CONTEXTS  4
@@ -702,6 +713,70 @@ static int  android_modem_state_load(QEMUFile *f, void  *opaque, int version_id)
 /* Default num of rmnets. Could be overridden by vl-android.c. */
 int amodem_num_rmnets = MAX_DATA_CONTEXTS;
 
+/* AT+CGCONTRDP can only report two DNS server addresses -- primary and
+ * secondary.  See 3GPP TS 27.007 subclause 10.1.23 "PDP context read dynamic
+ * parameters +CGCONTRDP".
+ */
+#define NUM_DNS_PER_RMNET 2
+static struct {
+    const char* mask;
+    char gw[ INET_ADDRSTRLEN ];
+    char dnses[ NUM_DNS_PER_RMNET ][ INET_ADDRSTRLEN ];
+
+    ADataConnectionRec conn[MAX_DATA_CONTEXTS];
+} _amodem_rmnets;
+
+static void
+amodem_init_rmnets()
+{
+    static int inited = 0;
+    struct in_addr sa;
+    int i, j;
+
+    if ( inited ) {
+        return;
+    }
+    inited = 1;
+
+    memset( &_amodem_rmnets, 0, sizeof(_amodem_rmnets) );
+
+    _amodem_rmnets.mask = "/24";
+
+    sa.s_addr = htonl(alias_addr_ip);
+    inet_ntop( AF_INET, &sa, _amodem_rmnets.gw, INET_ADDRSTRLEN );
+
+    for ( i = 0; i < NUM_DNS_PER_RMNET && i < dns_addr_count; i++ ) {
+      sa.s_addr = htonl(dns_addr[i]);
+      inet_ntop( AF_INET, &sa, _amodem_rmnets.dnses[i], INET_ADDRSTRLEN );
+    }
+
+    for ( i = 0, j = 0; i < MAX_NICS && j < amodem_num_rmnets; i++ ) {
+        struct NICInfo* nd = &nd_table[i];
+        if ( !nd->used ||
+             !nd->name ||
+             strncmp( nd->name, "rmnet.", 6 ) ) {
+            continue;
+        }
+
+        /* Data connections are down by default. */
+        do_set_link( NULL, nd->name, "down" );
+
+        ADataConnection conn = &_amodem_rmnets.conn[j];
+        conn->nd = nd;
+
+        /* Preallocate an IP address for this rmnet.  `special_addr_ip` is the
+         * IP address for the SLIRP subnet and is usually "10.0.2.0".  While
+         * "10.0.2.16" - "10.0.2.31" are reserved for ethernet DHCP, we use
+         * "10.0.2.100" and up.
+         */
+        sa.s_addr = special_addr_ip + 100 + j;
+        sa.s_addr = htonl(sa.s_addr);
+        inet_ntop( AF_INET, &sa, conn->ip, INET_ADDRSTRLEN );
+
+        ++j;
+    }
+}
+
 static AModemRec   _android_modem[MAX_GSM_DEVICES];
 
 AModem
@@ -711,6 +786,8 @@ amodem_create( int  base_port, int instance_id, AModemUnsolFunc  unsol_func, voi
     char nvfname[MAX_PATH];
     char *start = nvfname;
     char *end = start + sizeof(nvfname);
+
+    amodem_init_rmnets();
 
     modem->base_port    = base_port;
     modem->instance_id  = instance_id;
@@ -1281,6 +1358,70 @@ amodem_set_gsm_location( AModem modem, int lac, int ci )
 /** Data
  **/
 
+static ADataConnection
+amodem_acquire_data_conn( ADataContext context )
+{
+    int i;
+
+    for ( i = 0; i < amodem_num_rmnets; ++i ) {
+        ADataConnection conn = _amodem_rmnets.conn + i;
+        if ( conn->context ) {
+            continue;
+        }
+
+        context->conn = conn;
+        conn->context = context;
+        return conn;
+    }
+
+    return NULL;
+}
+
+static void
+amodem_release_data_conn( ADataConnection conn )
+{
+    conn->context->conn = NULL;
+    conn->context = NULL;
+}
+
+static const char*
+amodem_setup_pdp( ADataContext context )
+{
+    if ( context->active ) {
+        return "OK";
+    }
+
+    ADataConnection conn = amodem_acquire_data_conn( context );
+    if ( !conn || !do_set_link( NULL, conn->nd->name, "up" ) ) {
+        goto err;
+    }
+
+    context->active = true;
+    return "OK";
+
+err:
+    if ( conn ) {
+        amodem_release_data_conn(conn);
+    }
+
+    // service option temporarily out of order
+    return "+CME ERROR: 134";
+}
+
+static const char*
+amodem_teardown_pdp( ADataContext context )
+{
+    if ( !context->active ) {
+        return "OK";
+    }
+
+    do_set_link( NULL, context->conn->nd->name, "down" );
+    amodem_release_data_conn( context->conn );
+
+    context->active = false;
+    return "OK";
+}
+
 static const char*
 amodem_activate_data_call( AModem  modem, int cid, int enable)
 {
@@ -1307,9 +1448,8 @@ amodem_activate_data_call( AModem  modem, int cid, int enable)
         return "+CME ERROR: 134";
     }
 
-    data->active = enable;
-
-    return "OK";
+    return enable ? amodem_setup_pdp( data )
+                  : amodem_teardown_pdp( data );
 }
 
 /** COMMAND HANDLERS
