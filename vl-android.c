@@ -4032,6 +4032,21 @@ int main(int argc, char **argv, char **envp)
 #endif
     }
 
+    if (amodem_num_devices) {
+        if ((nb_net_clients + amodem_num_rmnets) > MAX_NET_CLIENTS) {
+            amodem_num_rmnets = MAX_NET_CLIENTS - nb_net_clients;
+            if (amodem_num_rmnets > 4/*MAX_DATA_CONTEXTS*/) {
+                amodem_num_rmnets = 4/*MAX_DATA_CONTEXTS*/;
+            }
+        }
+
+        if (amodem_num_rmnets) {
+            for (i = 0; i < amodem_num_rmnets; i++) {
+                net_clients[nb_net_clients++] = "rmnet";
+            }
+        }
+    }
+
     for(i = 0;i < nb_net_clients; i++) {
         if (net_client_parse(net_clients[i]) < 0) {
             PANIC("Unable to parse net clients");

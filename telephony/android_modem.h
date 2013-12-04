@@ -19,6 +19,7 @@
  **/
 typedef struct AModemRec_*    AModem;
 extern int         amodem_num_devices;
+extern int         amodem_num_rmnets;
 
 /* a function used by the modem to send unsolicited messages to the channel controller */
 typedef void (*AModemUnsolFunc)( void*  opaque, const char*  message );

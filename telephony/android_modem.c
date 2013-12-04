@@ -699,6 +699,9 @@ static int  android_modem_state_load(QEMUFile *f, void  *opaque, int version_id)
     return 0; // >=0 Happy
 }
 
+/* Default num of rmnets. Could be overridden by vl-android.c. */
+int amodem_num_rmnets = MAX_DATA_CONTEXTS;
+
 static AModemRec   _android_modem[MAX_GSM_DEVICES];
 
 AModem
