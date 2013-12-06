@@ -2635,6 +2635,79 @@ handleQueryPDPContext( const char* cmd, AModem modem )
 }
 
 static const char*
+handleQueryPDPDynamicProp( const char* cmd, AModem modem )
+{
+    int cid_only = 0;
+    int cid = -1;
+    int i, j, entries, bearer_id;
+
+    assert( !memcmp( cmd, "+CGCONTRDP", 10 ) );
+
+    cmd += 10;
+    if ( '\0' == *cmd ) {
+        // List all.
+    } else if ( !strcmp(cmd, "=?" )) {
+        cid_only = 1;
+    } else if ( sscanf( cmd, "=%d", &cid ) != 1 ||
+                cid <= 0 ) {
+        return "+CME ERROR: 50"; // Incorrect parameters.
+    }
+
+    entries = 0;
+    amodem_begin_line( modem );
+
+    if ( cid_only ) {
+        amodem_add_line( modem, "+CGCONTRDP: (" );
+    }
+
+    for ( i = 0; i < MAX_DATA_CONTEXTS; i++ ) {
+        ADataContext context = modem->data_contexts + i;
+        /* Returns the relevant information for an/all active non secondary PDP
+         * contexts. */
+        if ( !context->active )
+            continue;
+
+        if ( cid > 0 && context->id != cid )
+            continue;
+
+        ++entries;
+        if ( cid_only ) {
+            amodem_add_line( modem, ( entries == 1 ? "%d" : ",%d" ),
+                             context->id );
+            /* Done printing cid-only entry. Continue to next one. */
+            continue;
+        }
+
+        ADataConnection conn = context->conn;
+
+        if ( entries > 1 )
+            amodem_add_line( modem, "\r\n" );
+
+        /* This is a dirty hack for passing kernel netif num to rild. */
+        bearer_id = conn->nd - &nd_table[0];
+        amodem_add_line( modem, "+CGCONTRDP: %d,%d,\"%s\"",
+                         context->id, bearer_id, context->apn );
+
+        amodem_add_line( modem, ",\"%s%s\"", conn->ip, _amodem_rmnets.mask );
+        amodem_add_line( modem, ",\"%s\"", _amodem_rmnets.gw );
+        for ( j = 0; j < 2; j++ ) {
+            if (!_amodem_rmnets.dnses[j][0]) {
+                break;
+            }
+            amodem_add_line( modem, ",\"%s\"", _amodem_rmnets.dnses[j] );
+        }
+    }
+
+    if ( cid_only ) {
+        amodem_add_line(modem, ")");
+    } else if ( cid > 0 && !entries ) {
+        return "+CME ERROR: 50"; // Incorrect parameters.
+    }
+
+    return amodem_end_line( modem );
+}
+
+static const char*
 handleActivatePDPContext( const char*  cmd, AModem  modem )
 {
     int enable, cid, items;
@@ -3173,7 +3246,7 @@ static const struct {
 
     { "!+CGDCONT=", NULL, handleDefinePDPContext },
     { "+CGDCONT?", NULL, handleQueryPDPContext },
-
+    { "!+CGCONTRDP", NULL, handleQueryPDPDynamicProp },
     { "+CGQREQ=1", NULL, NULL },
     { "+CGQMIN=1", NULL, NULL },
     { "+CGEREP=1,0", NULL, NULL },
