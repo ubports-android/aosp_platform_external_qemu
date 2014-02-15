@@ -62,6 +62,7 @@ HW_SOURCES := \
     bt-hci.c \
     bt-hid.c \
     bt-l2cap.c \
+    bt-remote.c \
     bt-sdp.c \
     cdrom.c \
     dma.c \
