@@ -2250,26 +2250,6 @@ int net_client_init(Monitor *mon, const char *device, const char *p)
         vlan->nb_guest_devs++;
         ret = idx;
     } else
-    if (!strcmp(device, "rmnet")) {
-        static int rmnet_index = 0;
-
-        if (name) {
-            config_error(mon, "rmnet iface should not have customized name.\n");
-            ret = -1;
-            goto out;
-        }
-
-        ret = net_client_init(mon, "nic", p);
-        if (ret < 0) {
-            return ret;
-        }
-
-        NICInfo *nd = &nd_table[ret];
-        if (!nd->name) {
-            snprintf(buf, sizeof(buf), "rmnet.%u", rmnet_index++);
-            nd->name = qemu_strdup(buf);
-        }
-    } else
     if (!strcmp(device, "none")) {
         if (*p != '\0') {
             config_error(mon, "'none' takes no parameters\n");
