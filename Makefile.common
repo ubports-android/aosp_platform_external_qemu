@@ -242,12 +242,6 @@ else # BUILD_SDL_FROM_SOURCES
 
     SDL_STATIC_LIBRARIES :=
 
-    # Set the 10.6 / 10.5 sysroot for Mac OS X, which enables QuickDraw
-    # compatibility headers
-    ifeq ($(QEMU_HOST_TAG),darwin-x86)
-      SDL_CFLAGS += -isysroot $(HOST_SYSROOT)
-    endif
-
 endif # BUILD_SDL_FROM_SOURCES
 
 EMULATOR_LIBUI_CFLAGS += $(SDL_CFLAGS)
