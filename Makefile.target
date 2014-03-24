@@ -91,6 +91,7 @@ HW_SOURCES := \
     pci.c \
     qdev.c \
     scsi-disk.c \
+    snep.c \
     sysbus.c \
     usb-hid.c \
     usb-hub.c \
