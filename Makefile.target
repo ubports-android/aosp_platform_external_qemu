@@ -82,6 +82,7 @@ HW_SOURCES := \
     goldfish_tty.c \
     goldfish_vmem.c \
     llcp.c \
+    llcp-snep.c \
     msmouse.c \
     nfc.c \
     nfc-hci.c \
