@@ -3847,6 +3847,7 @@ nfc_rf_intf_activated_ntf_cb(void* data,
         }
         param->re = nfc->active_re;
     }
+    nfc_clear_re(param->re);
     if (nfc->active_rf) {
         // Already select an active rf interface,so do nothing.
     } else if (param->rf == -1) {
