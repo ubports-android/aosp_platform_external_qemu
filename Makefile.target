@@ -353,6 +353,7 @@ LOCAL_SRC_FILES := \
     qemu-timer-common.c \
     user-events-qemu.c \
     vl-android.c \
+    android/base64.c \
     android/console.c \
     android/opengles.c \
     android/display-core.c \
@@ -434,6 +435,7 @@ common_LOCAL_SRC_FILES := \
     user-events-qemu.c \
     vl-android.c \
     android/cmdline-option.c \
+    android/base64.c \
     android/console.c \
     android/display.c \
     android/display-core.c \
