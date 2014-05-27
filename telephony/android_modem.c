@@ -3498,3 +3498,49 @@ int  amodem_send( AModem  modem, const char*  cmd )
         }
     }
 }
+
+const char*
+amodem_get_sim_ef ( AModem modem, int fileid, int record )
+{
+    char cmd[128] = {'\0'};
+    int sim_command;
+    int mode;
+
+    /* if record specified, then only mode supported is SIM_FILE_RECORD_ABSOLUTE_MODE(4) */
+    if (record) {
+        sim_command = A_SIM_CMD_READ_RECORD;
+        mode = 4;
+    } else {
+        sim_command = A_SIM_CMD_READ_BINARY;
+        mode = 0;
+    }
+
+    /* TODO: add function to translate error return strings to error messages ! */
+
+    snprintf( cmd, sizeof(cmd), "+CRSM=%d,%d,%d,%d,%d,%s", sim_command, fileid, record, mode, -1, "" );
+    return asimcard_io( modem->sim, cmd );
+}
+
+const char*
+amodem_set_sim_ef ( AModem modem, int fileid, int record, const char* data )
+{
+    char cmd[128] = {'\0'};
+    int mode = 4;
+    int sim_command;
+    int len;
+
+    /* TODO: add support for adding new SIM files/records */
+
+    if (record) {
+        mode = 4;
+        sim_command = A_SIM_CMD_UPDATE_RECORD;
+    } else {
+        mode = 0;
+        sim_command = A_SIM_CMD_UPDATE_BINARY;
+    }
+
+    len = strlen(data) / 2;
+
+    snprintf( cmd, sizeof(cmd), "+CRSM=%d,%d,%d,%d,%d,%s", sim_command, fileid, record, mode, len, data );
+    return asimcard_io( modem->sim, cmd );
+}

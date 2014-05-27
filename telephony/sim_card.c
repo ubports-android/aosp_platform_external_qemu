@@ -498,8 +498,8 @@ asimcard_io_read_binary( ASimCard sim, int id, int p1, int p2, int p3 )
         return SIM_RESPONSE_FUNCTION_NOT_SUPPORT;
     }
 
-    if (ef->dedicated.length < p3) {
-        return SIM_RESPONSE_WRONG_LENGTH;
+    if (p3 != -1 && ef->dedicated.length < p3) {
+      return SIM_RESPONSE_WRONG_LENGTH;
     }
 
     sprintf(out, "%s,", SIM_RESPONSE_NORMAL_ENDING);
@@ -534,7 +534,7 @@ asimcard_io_read_record( ASimCard sim, int id, int p1, int p2, int p3 )
         return SIM_RESPONSE_RECORD_NOT_FOUND;
     }
 
-    if (ef->linear.rec_len < p3) {
+    if (p3 != -1 || ef->linear.rec_len < p3) {
         return SIM_RESPONSE_WRONG_LENGTH;
     }
 
@@ -1007,6 +1007,7 @@ asimcard_io( ASimCard  sim, const char*  cmd )
 {
     int  command, id, p1, p2, p3;
     char data[128] = {'\0'};
+    SimFile ef;
 
     assert( memcmp( cmd, "+CRSM=", 6 ) == 0 );
 
@@ -1023,6 +1024,10 @@ asimcard_io( ASimCard  sim, const char*  cmd )
 
             case A_SIM_CMD_UPDATE_RECORD:
                 return asimcard_io_update_record(sim, id, p1, p2, p3, data);
+
+            case A_SIM_CMD_UPDATE_BINARY:
+                ef = asimcard_ef_find(sim, id);
+                return asimcard_ef_update_dedicated(ef, data);
 
             default:
                 return SIM_RESPONSE_FUNCTION_NOT_SUPPORT;

@@ -1762,6 +1762,137 @@ do_gsm_report( ControlClient  client, char*  args )
     return 0;
 }
 
+static int
+do_gsm_sim_get( ControlClient  client, char*  args )
+{
+    char* arg1 = NULL;
+    char* arg2 = NULL;
+    const char* data;
+    char* end;
+    int   fileid, record = 0;
+    char  buffer[128] = {'\0'};
+
+    if (!client->modem) {
+        control_write( client, "KO: modem emulation not running\r\n" );
+        return -1;
+    }
+
+    if (!args) {
+        control_write( client, "KO: missing argument, try 'gsm sim-get <fileid>'\r\n" );
+        return -1;
+    }
+
+    arg1 = strsep( &args, " " );
+    if (strlen(arg1) != 4) {
+        control_write( client, "KO: invalid filed - must be four hex characters\r\n" );
+        return -1;
+    }
+
+    fileid = strtol( arg1, &end, 16 );
+    if (end == arg1) {
+        control_write( client, "KO: invalid fileid - must be four hex characters'\r\n" );
+        return -1;
+    }
+
+    arg2 = strsep( &args, " " );
+
+    if (arg2) {
+
+        if (strlen(arg2) != 2) {
+            control_write( client, "KO: invalid record - must be two hex characters\r\n" );
+            return -1;
+        }
+
+        record = strtol( arg2, &end, 16 );
+        if (end == arg2) {
+            control_write( client, "KO: invalid record - must be two hex characters'\r\n" );
+            return -1;
+        }
+    }
+
+    data = amodem_get_sim_ef( client->modem, fileid, record );
+
+    snprintf( buffer, sizeof(buffer), "%s\r\n", data );
+    control_write( client, buffer );
+
+    return 0;
+}
+
+static int
+do_gsm_sim_set( ControlClient  client, char*  args )
+{
+    char* arg1 = NULL;
+    char* arg2 = NULL;
+    char* arg3 = NULL;
+    char* data = NULL;
+    char* end;
+    const char* error;
+    char  buffer[128] = {'\0'};
+    int   fileid, len, record = 0;
+
+    if (!client->modem) {
+        control_write( client, "KO: modem emulation not running\r\n" );
+        return -1;
+    }
+
+    if (!args) {
+        control_write( client, "KO: missing argument, try 'gsm sim-set <fileid> <data>'\r\n" );
+        return -1;
+    }
+
+    arg1 = strsep( &args, " " );
+    if (strlen(arg1) != 4) {
+        control_write( client, "KO: invalid filed - must be four hex characters\r\n" );
+        return -1;
+    }
+
+    fileid = strtol( arg1, &end, 16 );
+    if (end == arg1) {
+        control_write( client, "KO: invalid fileid - must be four hex characters'\r\n" );
+        return -1;
+    }
+
+    arg2 = strsep( &args, " " );
+
+    if (arg2) {
+
+        arg3 = strsep( &args, " " );
+
+        if (arg3) {
+            data = arg3;
+
+            if (strlen(arg2) != 2) {
+              control_write( client, "KO: invalid record - must be two hex characters\r\n" );
+              return -1;
+            }
+
+            record = strtol( arg2, &end, 16 );
+            if (end == arg2) {
+              control_write( client, "KO: invalid record - must be two hex characters'\r\n" );
+              return -1;
+            }
+        } else {
+            data = arg2;
+        }
+    } else {
+        control_write( client, "KO: invalid data - must specify hex characters'\r\n" );
+        return -1;
+    }
+
+    len = strlen(data);
+    if (len & 1) {
+      control_write( client, "KO: invalid data - must specify an even number of hex characters'\r\n" );
+      return -1;
+    }
+
+    error = amodem_set_sim_ef( client->modem, fileid, record, data );
+
+    snprintf( buffer, sizeof(buffer), "%s\r\n", error );
+    control_write( client, "%s\r\n", error );
+
+    return 0;
+}
+
 #if 0
 static const CommandDefRec  gsm_in_commands[] =
 {
@@ -1861,6 +1992,19 @@ static const CommandDefRec  gsm_commands[] =
     "'gsm location [<lac> <ci>]' sets or gets the location area code and cell identification.\r\n"
     "lac range is 0..65535 and ci range is 0..268435455\r\n",
     NULL, do_gsm_location, NULL},
+
+    { "sim-get", "get a SIM/USIM EF file",
+    "'gsm sim-get <file-id> [<record>]' dump SIM/USIM EF file.\r\n"
+    "file-id is a 4-digit hex string that specifies a valid EF file ( see 3GPP TS 24.011 or 31.102 )\r\n"
+    "record is a number representing a record in an EF linear file\r\n",
+    NULL, do_gsm_sim_get, NULL },
+
+    { "sim-set", "set a SIM/USIM EF file",
+    "'gsm sim-set <file-id> [<record>] <hex-string>' replace the contents of the file/record.\r\n"
+    "file-id is a 4-digit hex string that specifies a valid EF file ( see 3GPP TS 24.011 or 31.102 )\r\n"
+    "record is a number representing a record in an EF linear file\r\n"
+    "hex-string is an ASCII hex string specifying the new content of the EF file/record\r\n",
+    NULL, do_gsm_sim_set, NULL },
 
     { "report", "report Modem status",
     "'gsm report'      report all known fields\r\n"

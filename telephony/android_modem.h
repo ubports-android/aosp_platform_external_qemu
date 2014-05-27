@@ -239,6 +239,12 @@ extern void amodem_set_gsm_location( AModem modem, int lac, int ci );
 extern int amodem_get_base_port( AModem  modem );
 extern int amodem_get_instance_id( AModem  modem );
 
+/** SIM EF handling
+ **/
+
+extern const char* amodem_get_sim_ef ( AModem modem, int fileid, int record );
+extern const char* amodem_set_sim_ef ( AModem modem, int fileid, int record, const char* data );
+
 /**/
 
 #endif /* _android_modem_h_ */
