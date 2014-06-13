@@ -344,17 +344,17 @@ asimcard_ef_remove( ASimCard sim, SimFile ef )
     asimcard_ef_free(ef);
 }
 
-static int
+static const char*
 asimcard_ef_update_dedicated( SimFile ef, char* data )
 {
     if (data == NULL || (strlen(data) % 2) == 1) {
         D("ERROR: Length of data should be even.\n");
-        return -1;
+        return SIM_RESPONSE_INCORRECT_PARAMETERS;
     }
 
     if (ef == NULL || ef->any.type != SIM_FILE_EF_DEDICATED) {
         D("ERROR: The type of EF is not SIM_FILE_EF_DEDICATED.\n");
-        return -1;
+        return SIM_RESPONSE_INCORRECT_PARAMETERS;
     }
 
     SimFileEFDedicated dedicated = (SimFileEFDedicated) ef;
@@ -369,7 +369,9 @@ asimcard_ef_update_dedicated( SimFile ef, char* data )
         memset(dedicated->data, 0xff, dedicated->length * sizeof(byte_t));
     }
 
-    return gsm_hex_to_bytes((cbytes_t) data, strlen(data), dedicated->data);
+    gsm_hex_to_bytes((cbytes_t) data, strlen(data), dedicated->data);
+
+    return SIM_RESPONSE_NORMAL_ENDING;
 }
 
 static int
