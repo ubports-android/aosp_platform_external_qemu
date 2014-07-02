@@ -2489,9 +2489,6 @@ handleLastCallFailCause( const char* cmd, AModem modem )
  *   mm is 0-based
  *   tz is in number of quarter-hours
  *
- * it seems reference-ril doesn't parse the comma (,) as anything else than a token
- * separator, so use a column (:) instead, the Java parsing code won't see a difference
- *
  */
 static void
 amodem_addTimeUpdate( AModem  modem )
@@ -2500,7 +2497,6 @@ amodem_addTimeUpdate( AModem  modem )
     struct tm    utc, local;
     long         e_local, e_utc;
     long         tzdiff;
-    char         tzname[64];
 
     tzset();
 
@@ -2517,39 +2513,11 @@ amodem_addTimeUpdate( AModem  modem )
 
     tzdiff = e_local - e_utc;  /* timezone offset in minutes */
 
-   /* retrieve a zoneinfo-compatible name for the host timezone
-    */
-    {
-        char*  end = tzname + sizeof(tzname);
-        char*  p = bufprint_zoneinfo_timezone( tzname, end );
-        if (p >= end)
-            strcpy(tzname, "Unknown/Unknown");
-
-        /* now replace every / in the timezone name by a "!"
-         * that's because the code that reads the CTZV line is
-         * dumb and treats a / as a field separator...
-         */
-        p = tzname;
-        while (1) {
-            p = strchr(p, '/');
-            if (p == NULL)
-                break;
-            *p = '!';
-            p += 1;
-        }
-    }
-
-   /* as a special extension, we append the name of the host's time zone to the
-    * string returned with %CTZ. the system should contain special code to detect
-    * and deal with this case (since it normally relied on the operator's country code
-    * which is hard to simulate on a general-purpose computer
-    */
-    amodem_add_line( modem, "%%CTZV: %02d/%02d/%02d:%02d:%02d:%02d%c%d:%d:%s\r\n",
+    amodem_add_line( modem, "%%CTZV: %02d/%02d/%02d,%02d:%02d:%02d%c%d,%d\r\n",
              (utc.tm_year + 1900) % 100, utc.tm_mon + 1, utc.tm_mday,
              utc.tm_hour, utc.tm_min, utc.tm_sec,
              (tzdiff >= 0) ? '+' : '-', (tzdiff >= 0 ? tzdiff : -tzdiff) / 15,
-             (local.tm_isdst > 0),
-             tzname );
+             (local.tm_isdst > 0));
 }
 
 static const char*
@@ -3004,7 +2972,6 @@ handleAnswer( const char*  cmd, AModem  modem )
 }
 
 int android_snapshot_update_time = 1;
-int android_snapshot_update_time_request = 0;
 
 static const char*
 handleSignalStrength( const char*  cmd, AModem  modem )
@@ -3015,9 +2982,8 @@ handleSignalStrength( const char*  cmd, AModem  modem )
      * Ideally, we'd be able to prod the guest into asking immediately on restore
      * from snapshot, but that'd require a driver.
      */
-    if ( android_snapshot_update_time && android_snapshot_update_time_request ) {
+    if ( android_snapshot_update_time ) {
       amodem_addTimeUpdate( modem );
-      android_snapshot_update_time_request = 0;
     }
 
     // rssi = 0 (<-113dBm) 1 (<-111) 2-30 (<-109--53) 31 (>=-51) 99 (?!)
