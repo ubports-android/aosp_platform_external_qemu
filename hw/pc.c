@@ -1200,6 +1200,14 @@ static void pc_init1(ram_addr_t ram_size,
 #endif
 #endif
 
+    /* SDCard for Ubuntu Emulator */
+    {
+        DriveInfo* info = drive_get( IF_IDE, 1, 0 );
+        if (info != NULL) {
+            goldfish_mmc_init(0xff006000, 1, info->bdrv);
+        }
+    }
+
 #ifndef CONFIG_ANDROID
     for(i = 0; i < MAX_FD; i++) {
         index = drive_get_index(IF_FLOPPY, 0, i);

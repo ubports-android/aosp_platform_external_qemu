@@ -795,6 +795,16 @@ int main(int argc, char **argv)
         }
     }
 
+	/* Real SDCard */
+	if (opts->sysdir) {
+        bufprint(tmp, tmpend, "%s/%s", opts->sysdir, "sdcardprime.img");
+        if (path_exists(tmp)) {
+            hw->hw_sdCardPrime_path = strdup(tmp);
+            /* TODO check for minumum allowed size */
+        } else {
+            dwarning("no Real SD Card found at '%s'", tmp);
+        }
+    }
 
     /** SNAPSHOT STORAGE HANDLING */
 

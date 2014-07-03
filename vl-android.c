@@ -2539,6 +2539,7 @@ int main(int argc, char **argv, char **envp)
     int cyls, heads, secs, translation;
     QemuOpts *hda_opts = NULL;
     QemuOpts *hdb_opts = NULL;
+    QemuOpts *hdc_opts = NULL;
     const char *net_clients[MAX_NET_CLIENTS];
     int nb_net_clients;
     const char *bt_opts[MAX_BT_CMDLINE];
@@ -3687,6 +3688,31 @@ int main(int argc, char **argv, char **envp)
             hdb_opts = drive_add(spath, HD_ALIAS, 1);
             /* See comment above to understand why this is needed. */
             qemu_opt_set(hdb_opts, "cache", "unsafe");
+        }
+    }
+
+    /* Init the REAL SD-Card stuff as hda is used as a container for the ubuntu image. */
+    if (hdc_opts == NULL) {
+        if (android_hw->hw_sdCardPrime_path != NULL) {
+            const char* sdPrimePath = android_hw->hw_sdCardPrime_path;
+            if (sdPrimePath && *sdPrimePath) {
+                if (!path_exists(sdPrimePath)) {
+                    fprintf(stderr, "WARNING: SD Card image is missing: %s\n", sdPrimePath);
+                } else if (filelock_create(sdPrimePath) == NULL) {
+                    fprintf(stderr, "WARNING: SD Card image already in use: %s\n", sdPrimePath);
+                } else {
+                    /* Successful locking */
+                    VERBOSE_PRINT(init, "Adding prime drive %s", sdPrimePath);
+                    hdc_opts = drive_add(sdPrimePath, HD_ALIAS, 2);
+                    /* Set this property of any operation involving the SD Card
+                     * will be x100 slower, due to the corresponding file being
+                     * mounted as O_DIRECT. Note that this is only 'unsafe' in
+                     * the context of an emulator crash. The data is already
+                     * synced properly when the emulator exits (either normally or through ^C).
+                     */
+                    qemu_opt_set(hdc_opts, "cache", "unsafe");
+                }
+            }
         }
     }
 
