@@ -101,11 +101,11 @@ ifneq ($(BUILD_STANDALONE_EMULATOR),true)
   # which contains the relevant headers and 32-bit libraries for audio (The host 64-bit
   # Lucid doesn't provide these anymore, only their 64-bit versions).
   ifeq ($(HOST_OS),linux)
-    HOST_SDK_TOOLCHAIN_PREFIX := prebuilts/tools/gcc-sdk
+    HOST_SDK_TOOLCHAIN_PREFIX := /usr/bin
     # Don't do anything if the toolchain is not there
     ifneq (,$(strip $(wildcard $(HOST_SDK_TOOLCHAIN_PREFIX)/gcc)))
-      MY_CC  := $(HOST_SDK_TOOLCHAIN_PREFIX)/gcc
-      MY_CXX := $(HOST_SDK_TOOLCHAIN_PREFIX)/g++
+      MY_CC  := $(HOST_SDK_TOOLCHAIN_PREFIX)/gcc-4.8
+      MY_CXX := $(HOST_SDK_TOOLCHAIN_PREFIX)/g++-4.8
       MY_AR  := $(HOST_SDK_TOOLCHAIN_PREFIX)/ar
     endif # $(HOST_SDK_TOOLCHAIN_PREFIX)/gcc exists
   endif # HOST_OS == linux
