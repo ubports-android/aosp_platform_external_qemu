@@ -266,27 +266,12 @@ static void events_put_keycode(void *x, int keycode)
 static void events_put_mouse(void *opaque, int dx, int dy, int dz, int buttons_state)
 {
     events_state *s = (events_state *) opaque;
-    /* in the Android emulator, we use dz == 0 for touchscreen events,
-     * and dz == 1 for trackball events. See the kbd_mouse_event calls
-     * in android/skin/trackball.c and android/skin/window.c
-     */
-    if (dz == 0) {
-        if (androidHwConfig_isScreenMultiTouch(android_hw)) {
-            /* Convert mouse event into multi-touch event */
-            multitouch_update_pointer(MTES_MOUSE, 0, dx, dy,
-                                      (buttons_state & 1) ? 0x81 : 0);
-        } else if (androidHwConfig_isScreenTouch(android_hw)) {
-            enqueue_event(s, EV_ABS, ABS_X, dx);
-            enqueue_event(s, EV_ABS, ABS_Y, dy);
-            enqueue_event(s, EV_ABS, ABS_Z, dz);
-            enqueue_event(s, EV_KEY, BTN_TOUCH, buttons_state&1);
-            enqueue_event(s, EV_SYN, 0, 0);
-        }
-    } else {
-        enqueue_event(s, EV_REL, REL_X, dx);
-        enqueue_event(s, EV_REL, REL_Y, dy);
-        enqueue_event(s, EV_SYN, 0, 0);
-    }
+    /* the Android emulator used dz to emit relative mouse events
+     * this is currently deactivated to avoid forcing the system in
+     * windowed mode */
+    /* Convert mouse event into multi-touch event */
+    multitouch_update_pointer(MTES_MOUSE, 0, dx, dy,
+                              (buttons_state & 1) ? 0x81 : 0);
 }
 
 static void  events_put_generic(void*  opaque, int  type, int  code, int  value)
@@ -399,9 +384,6 @@ void events_dev_init(uint32_t base, qemu_irq irq)
         events_set_bit(s, EV_KEY, KEY_CENTER);
     }
 
-    if (config->hw_trackBall) {
-        events_set_bit(s, EV_KEY, BTN_MOUSE);
-    }
     if (androidHwConfig_isScreenTouch(config)) {
         events_set_bit(s, EV_KEY, BTN_TOUCH);
     }
@@ -440,24 +422,16 @@ void events_dev_init(uint32_t base, qemu_irq irq)
         }
     }
 
-    /* configure EV_REL array
-     *
-     * EV_REL events are sent when the trackball is moved
-     */
-    if (config->hw_trackBall) {
-        events_set_bit (s, EV_SYN, EV_REL );
-        events_set_bits(s, EV_REL, REL_X, REL_Y);
-    }
-
     /* configure EV_ABS array.
      *
      * EV_ABS events are sent when the touchscreen is pressed
      */
-    if (!androidHwConfig_isScreenNoTouch(config)) {
+    {
         ABSEntry* abs_values;
 
         events_set_bit (s, EV_SYN, EV_ABS );
-        events_set_bits(s, EV_ABS, ABS_X, ABS_Z);
+        events_set_bit (s, EV_ABS, ABS_X );
+        events_set_bit (s, EV_ABS, ABS_Y );
         /* Allocate the absinfo to report the min/max bounds for each
          * absolute dimension. The array must contain 3, or ABS_MAX tuples
          * of (min,max,fuzz,flat) 32-bit values.
@@ -470,7 +444,7 @@ void events_dev_init(uint32_t base, qemu_irq irq)
          * There is no need to save/restore this array in a snapshot
          * since the values only depend on the hardware configuration.
          */
-        s->abs_info_count = androidHwConfig_isScreenMultiTouch(config) ? ABS_MAX * 4 : 3 * 4;
+        s->abs_info_count = ABS_MAX * 4;
         const int abs_size = sizeof(uint32_t) * s->abs_info_count;
         s->abs_info = malloc(abs_size);
         memset(s->abs_info, 0, abs_size);
@@ -478,9 +452,8 @@ void events_dev_init(uint32_t base, qemu_irq irq)
 
         abs_values[ABS_X].max = config->hw_lcd_width-1;
         abs_values[ABS_Y].max = config->hw_lcd_height-1;
-        abs_values[ABS_Z].max = 1;
 
-        if (androidHwConfig_isScreenMultiTouch(config)) {
+        {
             /*
              * Setup multitouch.
              */
@@ -493,8 +466,8 @@ void events_dev_init(uint32_t base, qemu_irq irq)
 
             abs_values[ABS_MT_SLOT].max = multitouch_get_max_slot();
             abs_values[ABS_MT_TRACKING_ID].max = abs_values[ABS_MT_SLOT].max + 1;
-            abs_values[ABS_MT_POSITION_X].max = abs_values[ABS_X].max;
-            abs_values[ABS_MT_POSITION_Y].max = abs_values[ABS_Y].max;
+            abs_values[ABS_MT_POSITION_X].max = config->hw_lcd_width-1;
+            abs_values[ABS_MT_POSITION_Y].max = config->hw_lcd_height-1;
             abs_values[ABS_MT_TOUCH_MAJOR].max = 0x7fffffff; // TODO: Make it less random
             abs_values[ABS_MT_PRESSURE].max = 0x100; // TODO: Make it less random
         }
